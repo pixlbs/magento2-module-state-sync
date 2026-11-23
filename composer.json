@@ -1,0 +1,81 @@
+{
+    "name": "pixel-labs/magento2-module-state-sync",
+    "description": "Updates the module sequence in Magento's app/etc/config.php and enforces module states, without bootstrapping Magento",
+    "keywords": [
+        "magento",
+        "magento2",
+        "mage-os",
+        "config.php",
+        "deployment",
+        "ci"
+    ],
+    "homepage": "https://github.com/pixlbs/magento2-module-state-sync",
+    "type": "library",
+    "license": "MIT",
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.1",
+        "ext-dom": "*",
+        "ext-libxml": "*"
+    },
+    "require-dev": {
+        "bitexpert/phpstan-magento": "^0.42",
+        "friendsofphp/php-cs-fixer": "^3.64",
+        "magento/framework": "~103.0.6.0 || ~103.0.7.0 || ~103.0.8.0 || ~103.0.9.0",
+        "magento/magento-coding-standard": "*",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpunit/phpunit": "^9.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "PixelLabs\\ModuleStateSync\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PixelLabs\\ModuleStateSync\\Test\\": "Test/"
+        }
+    },
+    "bin": [
+        "bin/module-state-sync"
+    ],
+    "archive": {
+        "exclude": [
+            "/.github",
+            "/.gitattributes",
+            "/.gitignore",
+            "/.php-cs-fixer.dist.php",
+            "/phpcs.xml.dist",
+            "/phpstan.neon",
+            "/phpunit.xml.dist"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "magento/composer-dependency-version-audit-plugin": true,
+            "magento/magento-composer-installer": false
+        }
+    },
+    "prefer-stable": true,
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://mirror.mage-os.org/"
+        }
+    ],
+    "scripts": {
+        "test:unit": "phpunit -c phpunit.xml.dist",
+        "test:phpstan": "phpstan analyse --memory-limit=1G",
+        "test:cs-fixer": "php-cs-fixer fix --dry-run --diff --allow-risky=yes",
+        "test:phpcs": "phpcs --standard=phpcs.xml.dist",
+        "test": [
+            "@test:unit",
+            "@test:phpstan",
+            "@test:cs-fixer",
+            "@test:phpcs"
+        ]
+    }
+}

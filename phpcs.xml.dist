@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<ruleset name="pixel-labs/magento2-module-state-sync">
+    <rule ref="Magento2"/>
+    <arg name="extensions" value="php"/>
+
+    <!-- The command runs before Magento can be bootstrapped, so there is no Filesystem or ObjectManager to go
+         through: plain PHP functions are the point of the package. -->
+    <rule ref="Magento2.Functions.DiscouragedFunction">
+        <severity>0</severity>
+    </rule>
+
+    <file>src</file>
+    <file>Test</file>
+</ruleset>

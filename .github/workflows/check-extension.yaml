@@ -1,0 +1,146 @@
+name: Check Extension
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# No job here writes to the repository; a compromised action or dependency gets a read-only token.
+permissions:
+  contents: read
+
+# Actions and the reusable workflow are pinned to commit SHAs (tags can be moved); update the SHA and its version
+# comment together. The reusable workflow references its own inner actions by tag, which this pin doesn't pin.
+jobs:
+  # Resolved fresh on every run, since this repo keeps no lock file. The package itself has no dependencies.
+  composer-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Resolve dependencies without installing them
+        run: composer update --no-install --no-interaction --no-progress
+      - name: Audit resolved dependencies
+        run: composer audit --locked --no-dev --abandoned=report
+
+  # PHPStan (level 8), PHP-CS-Fixer and PHPCS.
+  static-analysis:
+    name: Static analysis (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Install dependencies
+        run: composer update --no-interaction --no-progress --prefer-dist
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress --error-format=github
+      - name: Run PHP-CS-Fixer
+        run: composer test:cs-fixer
+      - name: Run PHPCS
+        run: composer test:phpcs
+
+  # Includes MagentoParityTest, which compares the module order with Magento's own loader: one entry per framework
+  # release, so that it runs against each of them. Composer picks the newest release the PHP version allows, so each
+  # entry asks for its own.
+  unit-tests:
+    name: Unit tests (PHP ${{ matrix.php }}, framework ${{ matrix.framework }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.1'
+            framework: '103.0.6'
+          - php: '8.2'
+            framework: '103.0.6'
+          - php: '8.2'
+            framework: '103.0.7'
+          - php: '8.3'
+            framework: '103.0.7'
+          - php: '8.3'
+            framework: '103.0.8'
+          - php: '8.4'
+            framework: '103.0.8'
+          - php: '8.4'
+            framework: '103.0.9'
+          - php: '8.5'
+            framework: '103.0.9'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Install dependencies
+        env:
+          FRAMEWORK: ${{ matrix.framework }}
+        run: >-
+          composer update --no-interaction --no-progress --prefer-dist
+          --with "magento/framework:~$FRAMEWORK.0"
+      - name: Show the framework release installed
+        run: composer show magento/framework | grep -E '^versions'
+      - name: Run unit tests
+        run: composer test:unit
+
+  # The newest Mage-OS release.
+  compute-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.supported.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: graycoreio/github-actions-magento2/supported-version@4de1565d1732187111b6d2eeb23c0ee3a9fc23b7 # v8.12.0
+        id: supported
+        with:
+          project: mage-os
+          kind: latest
+
+  # The oldest Magento release whose framework the unit tests cover.
+  compute-lowest-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.supported.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: graycoreio/github-actions-magento2/supported-version@4de1565d1732187111b6d2eeb23c0ee3a9fc23b7 # v8.12.0
+        id: supported
+        with:
+          project: magento-open-source
+          kind: custom
+          custom_versions: 'magento/project-community-edition:2.4.6'
+
+  # Installs the package into a real store and compares the order of all its modules with Magento's (Test/Integration).
+  check-extension:
+    needs: compute-matrix
+    uses: graycoreio/github-actions-magento2/.github/workflows/check-extension.yaml@4de1565d1732187111b6d2eeb23c0ee3a9fc23b7 # v8.12.0
+    with:
+      matrix: ${{ needs.compute-matrix.outputs.matrix }}
+      # The default mirror (https://mirror.mage-os.org/) only proxies magento/* packages; the
+      # mage-os/project-community-edition metapackage is published to https://repo.mage-os.org/.
+      magento_repository: https://repo.mage-os.org/
+
+  check-extension-lowest:
+    needs: compute-lowest-matrix
+    uses: graycoreio/github-actions-magento2/.github/workflows/check-extension.yaml@4de1565d1732187111b6d2eeb23c0ee3a9fc23b7 # v8.12.0
+    with:
+      matrix: ${{ needs.compute-lowest-matrix.outputs.matrix }}

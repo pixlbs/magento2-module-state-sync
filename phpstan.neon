@@ -1,0 +1,15 @@
+includes:
+    - vendor/bitexpert/phpstan-magento/extension.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+# Test/Integration is not analysed: it needs Magento's integration test framework (dev/tests/integration), which
+# only a full install has. check-extension runs those tests in one.
+parameters:
+    level: 8
+    paths:
+        - src
+        - Test/Unit
+    excludePaths:
+        - Test/Unit/_files/*
+    treatPhpDocTypesAsCertain: false
+    parallel:
+        maximumNumberOfProcesses: 1

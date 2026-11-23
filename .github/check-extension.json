@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/graycoreio/github-actions-magento2/main/resolve-check-config/check-extension.schema.json",
+  "jobs": {
+    "unit-test-extension": {
+      "enabled": false,
+      "reason": "The unit tests use helpers that are only autoloaded in the package itself (autoload-dev); they run in the unit-tests job of check-extension.yaml."
+    },
+    "integration_test": true
+  }
+}

@@ -12,7 +12,8 @@ permissions:
 # Actions and the reusable workflow are pinned to commit SHAs (tags can be moved); update the SHA and its version
 # comment together. The reusable workflow references its own inner actions by tag, which this pin doesn't pin.
 jobs:
-  # Resolved fresh on every run, since this repo keeps no lock file. The package itself has no dependencies.
+  # Resolved fresh on every run, since this repo keeps no lock file. The package itself has no dependencies, so this
+  # audits the development tools that CI runs; with --no-dev there would be nothing to audit, which Composer fails on.
   composer-audit:
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +27,7 @@ jobs:
       - name: Resolve dependencies without installing them
         run: composer update --no-install --no-interaction --no-progress
       - name: Audit resolved dependencies
-        run: composer audit --locked --no-dev --abandoned=report
+        run: composer audit --locked --abandoned=report
 
   # PHPStan (level 8), PHP-CS-Fixer and PHPCS.
   static-analysis:
